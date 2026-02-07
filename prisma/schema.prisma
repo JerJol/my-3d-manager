@@ -1,0 +1,97 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  theme       String?
+  localFolderPath String?
+  status      String
+  tags        String?
+  versionName String?
+  versionNumber Int     @default(1)
+  isDefault   Boolean @default(false)
+  parentProjectId Int?
+  parentProject Project? @relation("ProjectVersions", fields: [parentProjectId], references: [id])
+  versions      Project[] @relation("ProjectVersions")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  stls        StlFile[]
+  filamentId  Int?
+  filament    Filament? @relation(fields: [filamentId], references: [id])
+  printerId   Int?
+  printer     Printer?  @relation(fields: [printerId], references: [id])
+}
+
+model StlFile {
+  id          Int       @id @default(autoincrement())
+  projectId   Int
+  name        String
+  filePath    String
+  quantity    Int       @default(1)
+  comment     String?
+  status      String    @default("todo")
+  dimX        Float?
+  dimY        Float?
+  dimZ        Float?
+  volume      Float?
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  slicers     SlicerFile[]
+}
+
+model SlicerFile {
+  id          Int       @id @default(autoincrement())
+  stlFileId   Int
+  filamentId  Int?
+  name        String
+  filePath    String
+  printTime   Int?
+  filamentLen Float?
+  filamentWgt Float?
+  nozzleTemp  Int?
+  bedTemp     Int?
+  costElec    Float?
+  costMachine Float?
+  costFilament Float?
+  stlFile     StlFile   @relation(fields: [stlFileId], references: [id], onDelete: Cascade)
+  filament    Filament? @relation(fields: [filamentId], references: [id])
+}
+
+model Filament {
+  id          Int       @id @default(autoincrement())
+  name        String
+  brand       String?
+  material    String
+  density     Float     @default(1.24)
+  diameter    Float     @default(1.75)
+  weight      Float
+  price       Float
+  color       String?
+  slicers     SlicerFile[]
+  projects    Project[]
+}
+
+model Printer {
+  id                Int       @id @default(autoincrement())
+  name              String
+  model             String?
+  powerConsumptionW Int       @default(0)
+  machineHourlyCost Float     @default(0)
+  purchasePrice     Float     @default(0)
+  lifespanHours     Int       @default(0)
+  maintenanceCost   Float     @default(0)
+  projects          Project[]
+}
+
+model AppConfig {
+  id          Int       @id @default(autoincrement())
+  key         String    @unique
+  value       String
+}
