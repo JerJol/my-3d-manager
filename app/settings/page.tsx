@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Settings, Save, Zap, Layers, FolderOpen } from "lucide-react";
 import { getAppConfig, updateAppConfig, getFilaments, getPrinters, pickFolder } from "@/app/actions";
+import CategorySettings from "@/components/CategorySettings";
 
 interface Filament { id: number; name: string; }
 interface Printer { id: number; name: string; }
@@ -38,8 +39,8 @@ export default function SettingsPage() {
         setDefaultFilament(defFil || "");
         setDefaultPrinter(defPrint || "");
         setDefaultStlFolder(defFolder || "");
-        setFilaments(fils);
-        setPrinters(prints);
+        setFilaments(fils || []);
+        setPrinters(prints || []);
 
         setIsLoading(false);
     }
@@ -57,6 +58,8 @@ export default function SettingsPage() {
         setMessage("Paramètres enregistrés !");
         setTimeout(() => setMessage(""), 3000);
     }
+
+    if (isLoading) return <div className="p-8 text-slate-400">Chargement...</div>;
 
     return (
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -94,7 +97,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-start gap-4 py-2">
+                    <div className="flex items-start gap-4 py-2 border-b border-slate-800 pb-6">
                         <div className="p-3 bg-blue-500/10 rounded-lg">
                             <Layers className="w-6 h-6 text-blue-500" />
                         </div>
@@ -135,7 +138,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-start gap-4 py-6 border-t border-slate-800">
+                    <div className="flex items-start gap-4 py-6 border-b border-slate-800 pb-6">
                         <div className="p-3 bg-purple-500/10 rounded-lg">
                             <FolderOpen className="w-6 h-6 text-purple-500" />
                         </div>
@@ -172,7 +175,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    <div className="pt-4 border-t border-slate-800 flex items-center gap-4">
+                    <div className="pt-4 flex items-center gap-4">
                         <button
                             type="submit"
                             disabled={isSaving}
@@ -184,6 +187,10 @@ export default function SettingsPage() {
                         {message && <span className="text-green-400 text-sm">{message}</span>}
                     </div>
                 </form>
+            </div>
+
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                <CategorySettings />
             </div>
         </main>
     );

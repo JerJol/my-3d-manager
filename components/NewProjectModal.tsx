@@ -1,7 +1,20 @@
 "use client";
-import { createProject } from "@/app/actions";
+import { useEffect, useState } from "react";
+import { createProject, getCategories } from "@/app/actions";
+import { useRouter } from "next/navigation";
 
 export default function NewProjectModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+
+  useEffect(() => {
+    async function loadCategories() {
+      const cats = await getCategories();
+      setCategories(cats);
+    }
+    loadCategories();
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl">
@@ -9,6 +22,7 @@ export default function NewProjectModal({ onClose }: { onClose: () => void }) {
 
         <form action={async (formData) => {
           await createProject(formData);
+          router.refresh();
           onClose();
         }} className="space-y-4">
           <div>
@@ -28,6 +42,21 @@ export default function NewProjectModal({ onClose }: { onClose: () => void }) {
               className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none h-24 placeholder:text-slate-600"
               placeholder="Détails sur l'organisation des boites..."
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Catégorie</label>
+            <select
+              name="categoryId"
+              className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none [&>option]:bg-slate-900"
+            >
+              <option value="">Aucune catégorie</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

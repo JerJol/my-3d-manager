@@ -6,8 +6,8 @@ import { ArrowLeft, Box, Calendar, Tag, Upload, Eye, Trash, FolderOpen, Edit2, S
 import AddGcodeModal from "./AddGcodeModal";
 import ScanChoiceModal from "./ScanChoiceModal";
 import STLViewer from "./STLViewer";
-import { deleteStl, deleteSlicerFile, updateProjectFolder, openProjectFolder, updateStlQuantity, getFilaments, updateProjectFilament, getPrinters, updateProjectPrinter, getAppConfig, getProjectVersions, createProjectVersion, setDefaultVersion, updateProjectDescription, deleteProject, pickFolder, scanLocalStls, pickFile, addSingleStl, deleteAllProjectStls } from "@/app/actions";
-import { Printer as PrinterIcon, Plus, ChevronDown, Trash2, Home, Search, FolderSearch } from "lucide-react";
+import { deleteStl, deleteSlicerFile, updateProjectFolder, openProjectFolder, updateStlQuantity, getFilaments, updateProjectFilament, getPrinters, updateProjectPrinter, getAppConfig, getProjectVersions, createProjectVersion, setDefaultVersion, updateProjectDescription, deleteProject, pickFolder, scanLocalStls, pickFile, addSingleStl, deleteAllProjectStls, getCategories, updateProjectCategory } from "@/app/actions";
+import { Printer as PrinterIcon, Plus, ChevronDown, Trash2, Home, Search, FolderSearch, Tag as TagIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface ProjectDetailsClientProps {
@@ -21,6 +21,7 @@ interface ProjectDetailsClientProps {
         createdAt: Date;
         filamentId: number | null;
         printerId: number | null;
+        categoryId: number | null;
         parentProjectId: number | null;
         versionName: string | null;
         versionNumber: number;
@@ -33,6 +34,7 @@ interface ProjectDetailsClientProps {
             quantity: number;
             slicers: {
                 id: number;
+                name?: string;
                 printTime: number | null;
                 filamentLen: number | null;
             }[];
@@ -66,12 +68,14 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
     const [isScanChoiceModalOpen, setIsScanChoiceModalOpen] = useState(false);
     const [scanActionType, setScanActionType] = useState<'folder' | 'file'>('folder');
 
-    // Filament & Printer State
+    // Filament & Printer & Category State
     const [filaments, setFilaments] = useState<Filament[]>([]);
     const [printers, setPrinters] = useState<Printer[]>([]);
+    const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
     const [versions, setVersions] = useState<{ id: number; versionName: string | null; versionNumber: number; isDefault: boolean }[]>([]);
     const [selectedFilamentId, setSelectedFilamentId] = useState<number | null>(project.filamentId);
     const [selectedPrinterId, setSelectedPrinterId] = useState<number | null>(project.printerId);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(project.categoryId);
     const [elecPrice, setElecPrice] = useState(0);
     const [isCreatingVersion, setIsCreatingVersion] = useState(false);
     const router = useRouter();
@@ -79,6 +83,7 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
     useEffect(() => {
         getFilaments().then(setFilaments);
         getPrinters().then(setPrinters);
+        getCategories().then(setCategories);
         getProjectVersions(project.id).then(setVersions);
         getAppConfig("ELECTRICITY_PRICE").then(price => setElecPrice(Number(price) || 0));
     }, [project.id]);
@@ -126,6 +131,12 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
         await updateProjectPrinter(project.id, newId);
     };
 
+    const handleCategoryChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newId = e.target.value ? parseInt(e.target.value) : null;
+        setSelectedCategoryId(newId);
+        await updateProjectCategory(project.id, newId);
+    };
+
     return (
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
             {/* ... Header ... */}
@@ -152,10 +163,6 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
                                             onClick={async () => {
                                                 await updateProjectDescription(project.id, description);
                                                 setIsEditingDescription(false);
-                                                // No need for window.location.reload() if we update state locally, 
-                                                // but since the parent prop 'project' won't change without a refresh, 
-                                                // a reload is safer for now or we wait for dev to refresh.
-                                                // router.refresh();
                                                 window.location.reload();
                                             }}
                                             className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-xs font-bold transition-colors flex items-center gap-1"
@@ -206,7 +213,7 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
                                 onClick={async () => {
                                     if (confirm("Définir cette version comme version par défaut ?")) {
                                         await setDefaultVersion(project.id);
-                                        window.location.reload(); // Force reload to refresh data
+                                        window.location.reload();
                                     }
                                 }}
                                 className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-yellow-500 rounded-lg text-sm font-medium border border-slate-700 transition-colors"
@@ -276,7 +283,7 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
                 </div>
 
                 {/* Local Folder & Filament Section */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     {/* Local Folder */}
                     <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-3 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 flex-1 overflow-hidden">
@@ -349,44 +356,68 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
                         </div>
                     </div>
 
-                    {/* Filament Selection */}
-                    <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-3 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 flex-1 overflow-hidden">
-                            <div className="p-2 bg-blue-500/10 rounded-lg">
-                                <Layers className="w-5 h-5 text-blue-500" />
+                    <div className="space-y-4">
+                        {/* Filament Selection */}
+                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-3 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                                <div className="p-2 bg-blue-500/10 rounded-lg">
+                                    <Layers className="w-5 h-5 text-blue-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Filament du projet</div>
+                                    <select
+                                        value={selectedFilamentId || ""}
+                                        onChange={handleFilamentChange}
+                                        className="w-full bg-transparent text-sm text-white focus:outline-none cursor-pointer [&>option]:bg-slate-900"
+                                    >
+                                        <option value="">Sélectionner un filament...</option>
+                                        {filaments.map(f => (
+                                            <option key={f.id} value={f.id}>{f.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Filament du projet</div>
-                                <select
-                                    value={selectedFilamentId || ""}
-                                    onChange={handleFilamentChange}
-                                    className="w-full bg-transparent text-sm text-white focus:outline-none cursor-pointer [&>option]:bg-slate-900"
-                                >
-                                    <option value="">Sélectionner un filament...</option>
-                                    {filaments.map(f => (
-                                        <option key={f.id} value={f.id}>{f.name}</option>
-                                    ))}
-                                </select>
+                        </div>
+
+                        {/* Printer Selection */}
+                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-3 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                                <div className="p-2 bg-orange-500/10 rounded-lg">
+                                    <PrinterIcon className="w-5 h-5 text-orange-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Imprimante</div>
+                                    <select
+                                        value={selectedPrinterId || ""}
+                                        onChange={handlePrinterChange}
+                                        className="w-full bg-transparent text-sm text-white focus:outline-none cursor-pointer [&>option]:bg-slate-900"
+                                    >
+                                        <option value="">Sélectionner une imprimante...</option>
+                                        {printers.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Printer Selection */}
-                    <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-3 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 flex-1 overflow-hidden">
-                            <div className="p-2 bg-orange-500/10 rounded-lg">
-                                <PrinterIcon className="w-5 h-5 text-orange-500" />
+                    {/* Category Selection */}
+                    <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-3 flex flex-col justify-center gap-2">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-green-500/10 rounded-lg">
+                                <TagIcon className="w-5 h-5 text-green-500" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Imprimante</div>
+                                <div className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Catégorie</div>
                                 <select
-                                    value={selectedPrinterId || ""}
-                                    onChange={handlePrinterChange}
+                                    value={selectedCategoryId || ""}
+                                    onChange={handleCategoryChange}
                                     className="w-full bg-transparent text-sm text-white focus:outline-none cursor-pointer [&>option]:bg-slate-900"
                                 >
-                                    <option value="">Sélectionner une imprimante...</option>
-                                    {printers.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    <option value="">Sans catégorie</option>
+                                    {categories.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -457,7 +488,7 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
                         ) : (
                             <div className="space-y-3">
                                 {project.stls.map((stl) => {
-                                    const gcode = stl.slicers?.[0]; // Assuming 1 G-code per STL for now
+                                    const gcode = stl.slicers?.[0];
                                     return (
                                         <div key={stl.id} className="bg-slate-800/50 p-4 rounded-lg flex flex-col gap-3 group hover:bg-slate-800 transition-colors">
                                             <div className="flex justify-between items-start">
@@ -472,7 +503,6 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
                                                         />
                                                     </div>
                                                     <span className="text-slate-200 font-medium">{stl.name}</span>
-                                                    {/* Quantity Input */}
                                                     <div className="flex items-center gap-2 ml-4">
                                                         <span className="text-xs text-slate-500">Qté:</span>
                                                         <input
@@ -516,25 +546,20 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
                                             <div className="flex items-center gap-4 text-xs text-slate-400 pl-8 mt-2 w-full">
                                                 {gcode ? (
                                                     <div className="grid grid-cols-[30px_200px_40px_100px_100px_auto] items-center gap-4 w-full">
-                                                        {/* Status Dot */}
                                                         <div className="flex items-center justify-center">
                                                             <div className="w-2 h-2 rounded-full bg-green-500" title="G-code lié"></div>
                                                         </div>
 
-                                                        {/* Name */}
                                                         <span className="text-slate-200 font-medium truncate" title={gcode.name || "G-code"}>
                                                             {gcode.name || "Fichier G-code"}
                                                         </span>
 
-                                                        {/* Spacer */}
                                                         <span></span>
 
-                                                        {/* Time */}
                                                         <span className="text-slate-300">
                                                             ⏱️ {Math.floor((gcode.printTime || 0) / 3600)}h {Math.floor(((gcode.printTime || 0) % 3600) / 60)}m
                                                         </span>
 
-                                                        {/* Length */}
                                                         <span className="text-slate-300">
                                                             🧶 {Math.round(((gcode.filamentLen || 0) / 1000) * 100) / 100}m
                                                         </span>
@@ -655,7 +680,6 @@ export default function ProjectDetailsClient({ project }: ProjectDetailsClientPr
                                 alert(result.error);
                             }
                         } else {
-                            // Single File Pick
                             const defaultPath = await getAppConfig("DEFAULT_STL_FOLDER");
                             const initialDir = localPath || defaultPath || undefined;
 

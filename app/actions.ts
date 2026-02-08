@@ -15,6 +15,7 @@ export async function createProject(formData: FormData) {
     // Récupérer les réglages par défaut
     const defaultFilamentId = await getAppConfig("DEFAULT_FILAMENT_ID");
     const defaultPrinterId = await getAppConfig("DEFAULT_PRINTER_ID");
+    const categoryId = formData.get("categoryId") ? parseInt(formData.get("categoryId") as string) : null;
 
     await prisma.project.create({
       data: {
@@ -26,6 +27,7 @@ export async function createProject(formData: FormData) {
         isDefault: true,
         filamentId: defaultFilamentId ? parseInt(defaultFilamentId) : null,
         printerId: defaultPrinterId ? parseInt(defaultPrinterId) : null,
+        categoryId: categoryId,
       },
     });
 
@@ -76,6 +78,7 @@ export async function createProjectVersion(parentProjectId: number, name: string
         parentProjectId: parentProjectId,
         filamentId: parent.filamentId,
         printerId: parent.printerId,
+        categoryId: parent.categoryId,
         stls: {
           create: parent.stls.map(stl => ({
             name: stl.name,
@@ -174,7 +177,6 @@ export async function setDefaultVersion(projectId: number) {
   }
 }
 
-// Fonction pour récupérer les projets (on l'utilisera juste après)
 export async function getProjects() {
   return await prisma.project.findMany({
     where: {
@@ -186,6 +188,7 @@ export async function getProjects() {
     include: {
       filament: true,
       printer: true,
+      category: true,
       stls: {
         include: {
           slicers: true
@@ -251,6 +254,7 @@ export async function getProject(id: number) {
   return await prisma.project.findUnique({
     where: { id },
     include: {
+      category: true,
       stls: {
         include: {
           slicers: true
@@ -420,28 +424,6 @@ export async function deleteSlicerFile(id: number) {
   }
 }
 
-function parseGcodeMetadata(content: string) {
-  let printTime = 0;
-  let filamentLen = 0;
-
-  const lines = content.split('\n').slice(0, 500);
-  const footerLines = content.split('\n').slice(-500);
-  const allLines = [...lines, ...footerLines];
-
-  for (const line of allLines) {
-    if (line.includes(";TIME:")) {
-      printTime = parseInt(line.split(":")[1].trim());
-    }
-    if (line.includes("Filament used")) {
-      const match = line.match(/([0-9.]+)m/);
-      if (match) {
-        filamentLen = parseFloat(match[1]) * 1000;
-      }
-    }
-  }
-  return { printTime, filamentLen };
-}
-
 export async function uploadGcode(formData: FormData) {
   const stlId = parseInt(formData.get("stlId") as string);
   const file = formData.get("file") as File | null;
@@ -506,6 +488,28 @@ export async function uploadGcode(formData: FormData) {
   }
 }
 
+function parseGcodeMetadata(content: string) {
+  let printTime = 0;
+  let filamentLen = 0;
+
+  const lines = content.split('\n').slice(0, 500);
+  const footerLines = content.split('\n').slice(-500);
+  const allLines = [...lines, ...footerLines];
+
+  for (const line of allLines) {
+    if (line.includes(";TIME:")) {
+      printTime = parseInt(line.split(":")[1].trim());
+    }
+    if (line.includes("Filament used")) {
+      const match = line.match(/([0-9.]+)m/);
+      if (match) {
+        filamentLen = parseFloat(match[1]) * 1000;
+      }
+    }
+  }
+  return { printTime, filamentLen };
+}
+
 export async function updateProjectFolder(projectId: number, path: string) {
   try {
     await prisma.project.update({
@@ -553,11 +557,9 @@ export async function openProjectFolder(path: string) {
 export async function pickFolder(initialPath?: string) {
   return new Promise<{ success: boolean; path?: string; error?: string }>((resolve) => {
     // PowerShell script to open Folder Browser Dialog
-    // We use a one-liner to avoid escaping issues with multiline strings in exec
     let script = `Add-Type -AssemblyName System.Windows.Forms; $dialog = New-Object System.Windows.Forms.FolderBrowserDialog; $dialog.Description = 'Sélectionnez le dossier';`;
 
     if (initialPath) {
-      // In JS, we want to escape single quotes by doubling them for PowerShell single-quoted strings
       const escapedPath = initialPath.replace(/'/g, "''");
       script += ` $dialog.SelectedPath = '${escapedPath}';`;
     }
@@ -582,11 +584,9 @@ export async function pickFolder(initialPath?: string) {
 
 export async function pickFile(initialPath?: string) {
   return new Promise<{ success: boolean; path?: string; error?: string }>((resolve) => {
-    // PowerShell script to open File Browser Dialog
     let script = `[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms') | Out-Null; $dialog = New-Object System.Windows.Forms.OpenFileDialog; $dialog.Filter = 'STL Files (*.stl)|*.stl|All Files (*.*)|*.*'; $dialog.Title = 'Sélectionnez un fichier STL';`;
 
     if (initialPath) {
-      // Escape single quotes for PowerShell
       const escapedPath = initialPath.replace(/'/g, "''");
       script += ` $dialog.InitialDirectory = '${escapedPath}';`;
     }
@@ -840,6 +840,57 @@ export async function updateProjectPrinter(projectId: number, printerId: number 
   }
 }
 
+// --- Categories ---
+
+export async function getCategories() {
+  return await prisma.category.findMany({
+    orderBy: { name: 'asc' }
+  });
+}
+
+export async function createCategory(name: string) {
+  try {
+    await prisma.category.create({
+      data: { name }
+    });
+    revalidatePath("/settings");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("Error creating category:", error);
+    return { success: false, error: "La catégorie existe déjà ou impossible de la créer" };
+  }
+}
+
+export async function deleteCategory(id: number) {
+  try {
+    await prisma.category.delete({
+      where: { id }
+    });
+    revalidatePath("/settings");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting category:", error);
+    return { success: false, error: "Impossible de supprimer la catégorie (elle est peut-être utilisée)" };
+  }
+}
+
+export async function updateProjectCategory(projectId: number, categoryId: number | null) {
+  try {
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { categoryId }
+    });
+    revalidatePath("/");
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating project category:", error);
+    return { success: false, error: "Failed to update project category" };
+  }
+}
+
 // --- App Config (Settings) ---
 
 export async function getAppConfig(key: string) {
@@ -914,7 +965,7 @@ export async function scanLocalStls(projectId: number, folderPath: string, impor
         addedCount++;
 
         // Auto-associate G-code
-        const stlBaseName = stlFilename.replace(/\.[^/.]+$/, ""); // Remove extension
+        const stlBaseName = stlFilename.replace(/\.[^/.]+$/, "");
         const matches = gcodeFiles.filter(g => g.toLowerCase().includes(stlBaseName.toLowerCase()));
 
         if (matches.length === 1) {
@@ -941,10 +992,6 @@ export async function scanLocalStls(projectId: number, folderPath: string, impor
           associatedGcodeCount++;
         } else if (matches.length > 1) {
           associationWarnings.push(`${stlFilename} : Plusieurs G-codes trouvés (${matches.join(", ")})`);
-        } else if (gcodeFiles.length > 0) {
-          // If there are G-codes in the folder but none match this STL
-          // We could potentially be less strict, but let's stick to the request
-          // associationWarnings.push(`${stlFilename} : Aucun G-code correspondant`);
         }
       }
     }

@@ -28,6 +28,14 @@ model Project {
   filament    Filament? @relation(fields: [filamentId], references: [id])
   printerId   Int?
   printer     Printer?  @relation(fields: [printerId], references: [id])
+  categoryId  Int?
+  category    Category? @relation(fields: [categoryId], references: [id])
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  projects Project[]
 }
 
 model StlFile {
