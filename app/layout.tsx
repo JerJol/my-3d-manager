@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
+import { ThemeProvider } from "@/components/ThemeContext";
 
 export default function RootLayout({
   children,
@@ -26,18 +27,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-50`}
-        suppressHydrationWarning
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Navbar />
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1">
-            {children}
-          </main>
-        </div>
+        <ThemeProvider>
+          <Navbar />
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <main className="flex-1">
+              {children}
+            </main>
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

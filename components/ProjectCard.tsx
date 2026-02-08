@@ -71,21 +71,21 @@ export default function ProjectCard({ project, electricityPrice }: ProjectCardPr
     const totalCost = costFilament + costElectricity + costMachine;
 
     return (
-        <div className="relative bg-slate-800/40 border border-slate-800/60 rounded-lg p-6 hover:border-slate-700 transition-colors group cursor-pointer hover:bg-slate-800/60">
+        <div className="relative bg-card/40 border border-border/60 rounded-lg p-6 hover:border-border transition-colors group cursor-pointer hover:bg-card/60">
             <Link href={`/projects/${project.id}`} className="absolute inset-0 z-0" />
 
             <div className="flex justify-between items-start relative z-10 pointer-events-none">
                 <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-semibold text-slate-100 group-hover:text-blue-400 transition-colors">
-                            {project.name} <span className="text-slate-500 font-normal">— {project.versionName || `v${project.versionNumber}`}</span>
+                        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+                            {project.name} <span className="text-muted-foreground font-normal">— {project.versionName || `v${project.versionNumber}`}</span>
                         </h3>
-                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-muted-foreground border border-border">
                             {project.status}
                         </span>
                     </div>
 
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                         {project.description || "Aucune description"}
                     </p>
 
@@ -98,21 +98,21 @@ export default function ProjectCard({ project, electricityPrice }: ProjectCardPr
                             <Scale className="w-3.5 h-3.5" />
                             <span>{Math.round(totalWeightG)}g</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-blue-400 bg-blue-400/5 px-2 py-1 rounded-md border border-blue-400/10">
+                        <div className="flex items-center gap-1.5 text-xs text-primary bg-blue-400/5 px-2 py-1 rounded-md border border-blue-400/10">
                             <Coins className="w-3.5 h-3.5" />
                             <span>{totalCost.toFixed(2)} €</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-400/5 px-2 py-1 rounded-md border border-slate-400/10">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-slate-400/5 px-2 py-1 rounded-md border border-slate-400/10">
                             <Files className="w-3.5 h-3.5" />
                             <span>{totalStls} fichiers</span>
                         </div>
                     </div>
 
-                    <div className="pt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-500">
+                    <div className="pt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
                         {project.theme && (
                             <div className="flex items-center gap-1.5">
                                 <Tag className="w-3.5 h-3.5 text-blue-500/50" />
-                                <span>Thème: <span className="text-slate-400">{project.theme}</span></span>
+                                <span>Thème: <span className="text-muted-foreground">{project.theme}</span></span>
                             </div>
                         )}
                         <div className="flex items-center gap-1.5">
