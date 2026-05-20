@@ -1,14 +1,15 @@
 import { defineConfig } from 'vite'
-import path from 'node:path'
 import react from '@vitejs/plugin-react'
-import electron from 'vite-plugin-electron/simple'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-    plugins: [
+  plugins: [
     tailwindcss(),
-    react()
+    react(),
   ],
-  ],
+  server: {
+    port: 0,
+    strictPort: false
+  },
 })

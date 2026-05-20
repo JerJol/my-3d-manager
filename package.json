@@ -2,23 +2,20 @@
   "name": "3d-printer-manager",
   "private": true,
   "version": "0.0.0",
-  "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev:web": "vite -c vite.web.config.ts",
     "build": "tsc -b && vite build",
-    "package": "npm run build && electron-builder",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
+    "@supabase/supabase-js": "^2.106.1",
     "@types/three": "^0.182.0",
-    "better-sqlite3": "^12.6.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
-    "promise-mysql": "^5.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
@@ -26,17 +23,12 @@
     "three": "^0.182.0"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.3",
     "@eslint/js": "^9.39.1",
     "@tailwindcss/vite": "^4.2.4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
-    "electron": "^40.2.1",
-    "electron-builder": "^26.7.0",
-    "electron-devtools-installer": "^4.0.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
@@ -44,9 +36,7 @@
     "tailwindcss": "^4.2.4",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4",
-    "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6"
+    "vite": "^7.2.4"
   },
   "build": {
     "appId": "com.jerjol.my3dmanager",
